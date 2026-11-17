@@ -119,7 +119,9 @@ void main()
 	float ph = idx * Stagger;
 	float t  = Time * Speed + Offset;
 	vec2 mv  = vec2( 0.0 );
-	if( Motion == 0 )
+	if( Motion < 0 )
+		mv = vec2( 0.0 );
+	else if( Motion == 0 )
 		mv.y = t + ph;
 	else if( Motion == 1 )
 		mv.y = -( t + ph );
@@ -153,8 +155,8 @@ MovPanels::MovPanels()
 	values[ PT_ARCH_HEIGHT ]  = 0.6f;
 	values[ PT_SOFT ]         = 0.02f;
 	values[ PT_CONTENT ]      = 0.0f;
-	values[ PT_MOTION ]       = 2.0f;
-	values[ PT_SPEED ]        = ( 0.25f + 2.0f ) / 4.0f;
+	values[ PT_MOTION ]       = 0.0f;
+	values[ PT_SPEED ]        = 0.6f;// = 0.05 por segundo
 	values[ PT_STAGGER ]      = 0.15f;
 	values[ PT_OFFSET ]       = 0.5f;
 	values[ PT_ZOOM ]         = 0.5f;// 1.0x
@@ -177,12 +179,13 @@ MovPanels::MovPanels()
 	SetParamElementInfo( PT_CONTENT, 0, "Full image per panel", 0.0f );
 	SetParamElementInfo( PT_CONTENT, 1, "Continuous slice", 1.0f );
 
-	SetOptionParamInfo( PT_MOTION, "Motion", 5, values[ PT_MOTION ] );
-	SetParamElementInfo( PT_MOTION, 0, "Up", 0.0f );
-	SetParamElementInfo( PT_MOTION, 1, "Down", 1.0f );
-	SetParamElementInfo( PT_MOTION, 2, "Alternate Up/Down", 2.0f );
-	SetParamElementInfo( PT_MOTION, 3, "Wave", 3.0f );
-	SetParamElementInfo( PT_MOTION, 4, "Horizontal", 4.0f );
+	SetOptionParamInfo( PT_MOTION, "Motion", 6, values[ PT_MOTION ] );
+	SetParamElementInfo( PT_MOTION, 0, "Off (static)", 0.0f );
+	SetParamElementInfo( PT_MOTION, 1, "Up", 1.0f );
+	SetParamElementInfo( PT_MOTION, 2, "Down", 2.0f );
+	SetParamElementInfo( PT_MOTION, 3, "Alternate Up/Down", 3.0f );
+	SetParamElementInfo( PT_MOTION, 4, "Wave", 4.0f );
+	SetParamElementInfo( PT_MOTION, 5, "Horizontal", 5.0f );
 
 	SetParamInfof( PT_SPEED, "Speed", FF_TYPE_STANDARD );
 	SetParamInfof( PT_STAGGER, "Stagger", FF_TYPE_STANDARD );
@@ -239,8 +242,8 @@ FFResult MovPanels::ProcessOpenGL( ProcessOpenGLStruct* pGL )
 	shader.Set( "ArchStart", values[ PT_ARCH_HEIGHT ] );
 	shader.Set( "Soft", values[ PT_SOFT ] );
 	shader.Set( "Content", (int)( values[ PT_CONTENT ] + 0.5f ) );
-	shader.Set( "Motion", (int)( values[ PT_MOTION ] + 0.5f ) );
-	shader.Set( "Speed", values[ PT_SPEED ] * 4.0f - 2.0f );
+	shader.Set( "Motion", (int)( values[ PT_MOTION ] + 0.5f ) - 1 );
+	shader.Set( "Speed", ( values[ PT_SPEED ] * 2.0f - 1.0f ) * 0.5f );
 	shader.Set( "Stagger", values[ PT_STAGGER ] );
 	shader.Set( "Offset", values[ PT_OFFSET ] * 2.0f - 1.0f );
 	shader.Set( "Zoom", 0.25f * powf( 16.0f, values[ PT_ZOOM ] ) );
