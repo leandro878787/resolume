@@ -21,7 +21,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force ffgl-sdk/source/plugins/MovPanels | Out-Null
-          Copy-Item MovPanels/* ffgl-sdk/source/plugins/MovPanels/
+          Copy-Item ffgl-movpanels/MovPanels/* ffgl-sdk/source/plugins/MovPanels/
           $proj = Get-Content ffgl-sdk/build/windows/AddSubtract.vcxproj -Raw
           $proj = $proj -replace 'AddSubtract', 'MovPanels'
           $proj = $proj -replace 'AVFFGLADDSUBTRACT_EXPORTS', 'AVFFGLMOVPANELS_EXPORTS'
