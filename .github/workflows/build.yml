@@ -1,0 +1,41 @@
+name: Build MovPanels (Windows)
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout deste repositorio
+        uses: actions/checkout@v4
+
+      - name: Baixar o SDK FFGL oficial da Resolume
+        shell: pwsh
+        run: |
+          git clone https://github.com/resolume/ffgl.git ffgl-sdk
+          git -C ffgl-sdk checkout 5b6e07840277df9ec35a228b9eb067636316350f
+
+      - name: Copiar o plugin para dentro do SDK e gerar o projeto
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ffgl-sdk/source/plugins/MovPanels | Out-Null
+          Copy-Item MovPanels/* ffgl-sdk/source/plugins/MovPanels/
+          $proj = Get-Content ffgl-sdk/build/windows/AddSubtract.vcxproj -Raw
+          $proj = $proj -replace 'AddSubtract', 'MovPanels'
+          $proj = $proj -replace 'AVFFGLADDSUBTRACT_EXPORTS', 'AVFFGLMOVPANELS_EXPORTS'
+          $proj = $proj -replace '8EE99351-6226-415E-B2E9-2DCB2985F371', '3D2B7C1A-5E44-4C0B-9A6F-1B7A2C9D4E10'
+          Set-Content ffgl-sdk/build/windows/MovPanels.vcxproj $proj -Encoding UTF8
+
+      - name: Compilar (Release x64)
+        shell: pwsh
+        run: |
+          msbuild ffgl-sdk/build/windows/MovPanels.vcxproj /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /p:WindowsTargetPlatformVersion=10.0 /m
+
+      - name: Enviar o .dll como arquivo para download
+        uses: actions/upload-artifact@v4
+        with:
+          name: MovPanels-dll
+          path: ffgl-sdk/binaries/x64/Release/MovPanels.dll
+          if-no-files-found: error
