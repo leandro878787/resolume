@@ -28,6 +28,9 @@ jobs:
           $proj = $proj -replace '8EE99351-6226-415E-B2E9-2DCB2985F371', '3D2B7C1A-5E44-4C0B-9A6F-1B7A2C9D4E10'
           Set-Content ffgl-sdk/build/windows/MovPanels.vcxproj $proj -Encoding UTF8
 
+      - name: Preparar o MSBuild
+        uses: microsoft/setup-msbuild@v2
+
       - name: Compilar (Release x64)
         shell: pwsh
         run: |
