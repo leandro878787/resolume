@@ -26,7 +26,8 @@ enum ParamType : FFUInt32
 	PT_COUNT,
 	PT_PANEL_SELECT = PT_COUNT,
 	PT_PANEL_DATA_START,
-	PT_TOTAL_PARAMS = PT_PANEL_DATA_START + 96 * 2
+	PT_PANEL_POSITION_START = PT_PANEL_DATA_START + 96 * 2,
+	PT_TOTAL_PARAMS = PT_PANEL_POSITION_START + 96 * 2
 };
 
 static CFFGLPluginInfo PluginInfo(
@@ -76,6 +77,7 @@ uniform float Soft;
 uniform int   Content;
 uniform vec4  BgColor; // premultiplied
 uniform vec2  PanelScale[96];
+uniform vec2  PanelOffset[96];
 
 in vec2 uv;
 out vec4 fragColor;
@@ -199,15 +201,26 @@ void main()
 	int panelCol = int( clamp( col, 0.0, cols - 1.0 ) );
 	int panelIndex = clamp( panelRow * int( cols ) + panelCol, 0, 95 );
 	vec2 panelScale = PanelScale[ panelIndex ];
+	vec2 panelOffset = PanelOffset[ panelIndex ];
 	vec2 sz    = cell * ( 1.0 - Gap ) * panelScale;
 	vec2 h     = sz * 0.5;
 
-	vec2 q = local;
+	// Posicao individual expressa em fracoes da celula.
+	vec2 panelLocal = local - panelOffset * cell;
+	// Mantem a extremidade inferior fixa nas formas ancoradas pela base.
+	bool baseAnchored = ( Shape == 0 || Shape == 1 || Shape == 2 ||
+	                      Shape == 4 || Shape == 5 || Shape == 6 );
+	float baseAnchorOffset = baseAnchored
+		? h.y - ( cell.y * ( 1.0 - Gap ) * 0.5 )
+		: 0.0;
+
+	vec2 q = panelLocal;
 	if( FlipAlt > 0.5 && mod( col + row, 2.0 ) > 0.5 )
 		q.y = -q.y;
 	float ang = Rotation * 6.2831853;
 	float cs = cos( ang ), sn = sin( ang );
 	q = vec2( cs * q.x - sn * q.y, sn * q.x + cs * q.y );
+	q.y -= baseAnchorOffset;
 
 	float d    = shapeDist( q, h );
 	float edge = Soft * min( h.x, h.y ) * 0.5 + 1.0;
@@ -217,7 +230,7 @@ void main()
 
 	vec2 suv = uv;
 	if( Content == 1 )
-		suv = local / sz + 0.5;
+		suv = panelLocal / sz + 0.5;
 
 	// InputTexture e premultiplicada; a saida tambem precisa ser.
 	vec4 img = texture( InputTexture, suv * MaxUV );
@@ -251,8 +264,10 @@ ShapeMasks::ShapeMasks()
 	values[ PT_BG_BLUE ]     = 0.0f;
 	values[ PT_BG_ALPHA ]    = 1.0f;
 	values[ PT_PANEL_SELECT ] = 1.0f;
-	for( unsigned int i = PT_PANEL_DATA_START; i < PT_TOTAL_PARAMS; ++i )
-		values[ i ] = 1.0f;
+	for( unsigned int i = 0; i < 96 * 2; ++i )
+		values[ PT_PANEL_DATA_START + i ] = 1.0f;
+	for( unsigned int i = 0; i < 96 * 2; ++i )
+		values[ PT_PANEL_POSITION_START + i ] = 0.0f;
 
 	SetMinInputs( 1 );
 	SetMaxInputs( 1 );
@@ -310,19 +325,31 @@ ShapeMasks::ShapeMasks()
 		char panelName[ 16 ];
 		snprintf( panelName, sizeof( panelName ), "Painel %02u", i + 1 );
 		SetParamElementInfo( PT_PANEL_SELECT, i, panelName, (float)( i + 1 ) );
-		char widthName[ 16 ], heightName[ 16 ];
+		char widthName[ 16 ], heightName[ 16 ], posXName[ 16 ], posYName[ 16 ];
 		snprintf( widthName, sizeof( widthName ), "Largura P%02u", i + 1 );
 		snprintf( heightName, sizeof( heightName ), "Altura P%02u", i + 1 );
+		snprintf( posXName, sizeof( posXName ), "Posicao X P%02u", i + 1 );
+		snprintf( posYName, sizeof( posYName ), "Posicao Y P%02u", i + 1 );
 		unsigned int widthIndex = PT_PANEL_DATA_START + i * 2;
 		unsigned int heightIndex = widthIndex + 1;
+		unsigned int posXIndex = PT_PANEL_POSITION_START + i * 2;
+		unsigned int posYIndex = posXIndex + 1;
 		SetParamInfo( widthIndex, widthName, FF_TYPE_STANDARD, 1.0f );
 		SetParamInfo( heightIndex, heightName, FF_TYPE_STANDARD, 1.0f );
 		SetParamRange( widthIndex, 0.1f, 2.0f );
 		SetParamRange( heightIndex, 0.1f, 2.0f );
 		SetParamGroup( widthIndex, "Tamanho individual" );
 		SetParamGroup( heightIndex, "Tamanho individual" );
+		SetParamInfo( posXIndex, posXName, FF_TYPE_STANDARD, 0.0f );
+		SetParamInfo( posYIndex, posYName, FF_TYPE_STANDARD, 0.0f );
+		SetParamRange( posXIndex, -1.0f, 1.0f );
+		SetParamRange( posYIndex, -1.0f, 1.0f );
+		SetParamGroup( posXIndex, "Posicao individual" );
+		SetParamGroup( posYIndex, "Posicao individual" );
 		SetParamVisibility( widthIndex, false, false );
 		SetParamVisibility( heightIndex, false, false );
+		SetParamVisibility( posXIndex, false, false );
+		SetParamVisibility( posYIndex, false, false );
 	}
 	UpdatePanelParameterVisibility( false );
 	FFGLLog::LogToHost( "Efeito Mascara MultiPainel criado" );
@@ -385,6 +412,10 @@ FFResult ShapeMasks::ProcessOpenGL( ProcessOpenGLStruct* pGL )
 		snprintf( uniformName, sizeof( uniformName ), "PanelScale[%u]", i );
 		unsigned int widthIndex = PT_PANEL_DATA_START + i * 2;
 		shader.Set( uniformName, values[ widthIndex ], values[ widthIndex + 1 ] );
+
+		snprintf( uniformName, sizeof( uniformName ), "PanelOffset[%u]", i );
+		unsigned int posXIndex = PT_PANEL_POSITION_START + i * 2;
+		shader.Set( uniformName, values[ posXIndex ], values[ posXIndex + 1 ] );
 	}
 
 	quad.Draw();
@@ -407,8 +438,11 @@ void ShapeMasks::UpdatePanelParameterVisibility( bool raiseEvents )
 	{
 		bool visible = ( i + 1 == selected );
 		unsigned int widthIndex = PT_PANEL_DATA_START + i * 2;
+		unsigned int posXIndex = PT_PANEL_POSITION_START + i * 2;
 		SetParamVisibility( widthIndex, visible, raiseEvents );
 		SetParamVisibility( widthIndex + 1, visible, raiseEvents );
+		SetParamVisibility( posXIndex, visible, raiseEvents );
+		SetParamVisibility( posXIndex + 1, visible, raiseEvents );
 	}
 }
 
@@ -423,8 +457,10 @@ FFResult ShapeMasks::SetFloatParameter( unsigned int index, float value )
 		UpdatePanelParameterVisibility( true );
 		return FF_SUCCESS;
 	}
-	if( index >= PT_PANEL_DATA_START )
+	if( index >= PT_PANEL_DATA_START && index < PT_PANEL_POSITION_START )
 		value = fmaxf( 0.1f, fminf( 2.0f, value ) );
+	else if( index >= PT_PANEL_POSITION_START )
+		value = fmaxf( -1.0f, fminf( 1.0f, value ) );
 	values[ index ] = value;
 	return FF_SUCCESS;
 }
