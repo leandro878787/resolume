@@ -229,6 +229,9 @@ void main()
 	float a    = smoothstep( 0.0, edge, d );
 	if( Invert > 0.5 )
 		a = 1.0 - a;
+	float insideFrame = step( 0.0, maskUV.x ) * step( maskUV.x, 1.0 )
+	                  * step( 0.0, maskUV.y ) * step( maskUV.y, 1.0 );
+	a *= insideFrame;
 
 	vec2 suv = uv;
 	if( Content == 1 )
