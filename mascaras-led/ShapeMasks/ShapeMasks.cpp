@@ -29,13 +29,13 @@ enum ParamType : FFUInt32
 static CFFGLPluginInfo PluginInfo(
 	PluginFactory< ShapeMasks >,
 	"MkSh",
-	"Mascaras LED",
+	"Mascara MultiPainel",
 	2,
 	1,
 	1,
 	0,
 	FF_EFFECT,
-	"Mascaras em varias formas (arco, circulo, triangulo, estrela...) sem alterar o video",
+	"Mascara MultiPainel: mascaras geometricas para video e paineis de LED",
 	"ShapeMasks"
 );
 
@@ -218,8 +218,8 @@ void main()
 )";
 
 static const char* ShapeNames[] = {
-	"Rectangle", "Rounded Rectangle", "Arch", "Circle", "Oval", "Triangle Up",
-	"Triangle Down", "Diamond", "Hexagon", "Star", "Cross"
+	"Retangulo", "Retangulo Arredondado", "Arco", "Circulo", "Oval", "Triangulo para Cima",
+	"Triangulo para Baixo", "Losango", "Hexagono", "Estrela", "Cruz"
 };
 
 ShapeMasks::ShapeMasks()
@@ -246,18 +246,18 @@ ShapeMasks::ShapeMasks()
 	SetMinInputs( 1 );
 	SetMaxInputs( 1 );
 
-	SetOptionParamInfo( PT_SHAPE, "Shape", 11, values[ PT_SHAPE ] );
+	SetOptionParamInfo( PT_SHAPE, "Forma", 11, values[ PT_SHAPE ] );
 	for( unsigned int i = 0; i < 11; ++i )
 		SetParamElementInfo( PT_SHAPE, i, ShapeNames[ i ], (float)i );
 
-	SetOptionParamInfo( PT_COLUMNS, "Columns", 12, values[ PT_COLUMNS ] );
+	SetOptionParamInfo( PT_COLUMNS, "Colunas", 12, values[ PT_COLUMNS ] );
 	for( unsigned int i = 1; i <= 12; ++i )
 	{
 		char buf[ 8 ];
 		snprintf( buf, sizeof( buf ), "%u", i );
 		SetParamElementInfo( PT_COLUMNS, i - 1, buf, (float)i );
 	}
-	SetOptionParamInfo( PT_ROWS, "Rows", 8, values[ PT_ROWS ] );
+	SetOptionParamInfo( PT_ROWS, "Linhas", 8, values[ PT_ROWS ] );
 	for( unsigned int i = 1; i <= 8; ++i )
 	{
 		char buf[ 8 ];
@@ -265,35 +265,35 @@ ShapeMasks::ShapeMasks()
 		SetParamElementInfo( PT_ROWS, i - 1, buf, (float)i );
 	}
 
-	SetParamInfof( PT_GAP, "Gap", FF_TYPE_STANDARD );
-	SetParamInfof( PT_ROUNDNESS, "Corner Roundness", FF_TYPE_STANDARD );
-	SetParamInfof( PT_ARCH_HEIGHT, "Arch Height", FF_TYPE_STANDARD );
+	SetParamInfof( PT_GAP, "Espacamento", FF_TYPE_STANDARD );
+	SetParamInfof( PT_ROUNDNESS, "Arredondamento dos Cantos", FF_TYPE_STANDARD );
+	SetParamInfof( PT_ARCH_HEIGHT, "Altura do Arco", FF_TYPE_STANDARD );
 
-	SetOptionParamInfo( PT_POINTS, "Star Points", 6, values[ PT_POINTS ] );
+	SetOptionParamInfo( PT_POINTS, "Pontas da Estrela", 6, values[ PT_POINTS ] );
 	for( unsigned int i = 3; i <= 8; ++i )
 	{
 		char buf[ 8 ];
 		snprintf( buf, sizeof( buf ), "%u", i );
 		SetParamElementInfo( PT_POINTS, i - 3, buf, (float)i );
 	}
-	SetParamInfof( PT_FATNESS, "Star Fatness", FF_TYPE_STANDARD );
-	SetParamInfof( PT_ROTATION, "Rotation", FF_TYPE_STANDARD );
+	SetParamInfof( PT_FATNESS, "Espessura da Estrela", FF_TYPE_STANDARD );
+	SetParamInfof( PT_ROTATION, "Rotacao", FF_TYPE_STANDARD );
 
-	SetParamInfo( PT_OFFSET_ROWS, "Offset Rows", FF_TYPE_BOOLEAN, false );
-	SetParamInfo( PT_FLIP_ALT, "Flip Alternate", FF_TYPE_BOOLEAN, false );
-	SetParamInfo( PT_INVERT, "Invert", FF_TYPE_BOOLEAN, false );
-	SetParamInfof( PT_SOFT, "Edge Softness", FF_TYPE_STANDARD );
+	SetParamInfo( PT_OFFSET_ROWS, "Deslocar Linhas", FF_TYPE_BOOLEAN, false );
+	SetParamInfo( PT_FLIP_ALT, "Espelhar Alternadamente", FF_TYPE_BOOLEAN, false );
+	SetParamInfo( PT_INVERT, "Inverter Mascara", FF_TYPE_BOOLEAN, false );
+	SetParamInfof( PT_SOFT, "Suavidade das Bordas", FF_TYPE_STANDARD );
 
-	SetOptionParamInfo( PT_CONTENT, "Content", 2, values[ PT_CONTENT ] );
-	SetParamElementInfo( PT_CONTENT, 0, "Original video", 0.0f );
-	SetParamElementInfo( PT_CONTENT, 1, "Fit inside each shape", 1.0f );
+	SetOptionParamInfo( PT_CONTENT, "Conteudo", 2, values[ PT_CONTENT ] );
+	SetParamElementInfo( PT_CONTENT, 0, "Video Original", 0.0f );
+	SetParamElementInfo( PT_CONTENT, 1, "Ajustar dentro de cada forma", 1.0f );
 
-	SetParamInfof( PT_BG_RED, "Background Red", FF_TYPE_RED );
-	SetParamInfof( PT_BG_GREEN, "Background Green", FF_TYPE_GREEN );
-	SetParamInfof( PT_BG_BLUE, "Background Blue", FF_TYPE_BLUE );
-	SetParamInfof( PT_BG_ALPHA, "Background Alpha", FF_TYPE_ALPHA );
+	SetParamInfof( PT_BG_RED, "Fundo - Vermelho", FF_TYPE_RED );
+	SetParamInfof( PT_BG_GREEN, "Fundo - Verde", FF_TYPE_GREEN );
+	SetParamInfof( PT_BG_BLUE, "Fundo - Azul", FF_TYPE_BLUE );
+	SetParamInfof( PT_BG_ALPHA, "Fundo - Opacidade", FF_TYPE_ALPHA );
 
-	FFGLLog::LogToHost( "Created ShapeMasks effect" );
+	FFGLLog::LogToHost( "Efeito Mascara MultiPainel criado" );
 }
 
 ShapeMasks::~ShapeMasks()
