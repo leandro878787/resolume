@@ -284,8 +284,14 @@ ShapeMasks::ShapeMasks()
 	values[ PT_BORDER_RED ] = 1.0f;
 	values[ PT_BORDER_GREEN ] = 1.0f;
 	values[ PT_BORDER_BLUE ] = 1.0f;
-	for( unsigned int i = PT_PANEL_DATA_START; i < PT_PANEL_DATA_END; ++i )
-		values[ i ] = 1.0f;
+	for( unsigned int i = 0; i < 96; ++i )
+	{
+		unsigned int baseIndex = PT_PANEL_DATA_START + i * 4;
+		values[ baseIndex ] = 1.0f;
+		values[ baseIndex + 1 ] = 1.0f;
+		values[ baseIndex + 2 ] = 0.0f;
+		values[ baseIndex + 3 ] = 0.0f;
+	}
 
 	SetMinInputs( 1 );
 	SetMaxInputs( 1 );
