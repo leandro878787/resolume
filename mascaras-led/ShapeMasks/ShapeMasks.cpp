@@ -26,9 +26,7 @@ enum ParamType : FFUInt32
 	PT_COUNT,
 	PT_PANEL_SELECT = PT_COUNT,
 	PT_PANEL_DATA_START,
-	PT_PANEL_DATA_END = PT_PANEL_DATA_START + 96 * 2,
-	PT_POS_X = PT_PANEL_DATA_END,
-	PT_POS_Y,
+	PT_PANEL_DATA_END = PT_PANEL_DATA_START + 96 * 4,
 	PT_BORDER_ENABLED,
 	PT_BORDER_THICKNESS,
 	PT_BORDER_OPACITY,
@@ -85,7 +83,7 @@ uniform float Soft;
 uniform int   Content;
 uniform vec4  BgColor; // premultiplied
 uniform vec2  PanelScale[96];
-uniform vec2  Position;
+uniform vec2  PanelPosition[96];
 uniform int   BorderEnabled;
 uniform float BorderThickness;
 uniform float BorderOpacity;
@@ -200,7 +198,7 @@ void main()
 	float cols = max( 1.0, floor( Cols + 0.5 ) );
 	float rows = max( 1.0, floor( Rows + 0.5 ) );
 
-	vec2 maskUV = uv - Position;
+	vec2 maskUV = uv;
 	float yg  = maskUV.y * rows;
 	float row = floor( yg );
 	float xg  = maskUV.x * cols;
@@ -214,6 +212,8 @@ void main()
 	int panelCol = int( clamp( col, 0.0, cols - 1.0 ) );
 	int panelIndex = clamp( panelRow * int( cols ) + panelCol, 0, 95 );
 	vec2 panelScale = PanelScale[ panelIndex ];
+	vec2 panelPosition = PanelPosition[ panelIndex ];
+	local -= panelPosition * Res;
 	vec2 sz    = cell * ( 1.0 - Gap ) * panelScale;
 	vec2 h     = sz * 0.5;
 
@@ -278,8 +278,6 @@ ShapeMasks::ShapeMasks()
 	values[ PT_BG_BLUE ]     = 0.0f;
 	values[ PT_BG_ALPHA ]    = 1.0f;
 	values[ PT_PANEL_SELECT ] = 1.0f;
-	values[ PT_POS_X ] = 0.0f;
-	values[ PT_POS_Y ] = 0.0f;
 	values[ PT_BORDER_ENABLED ] = 0.0f;
 	values[ PT_BORDER_THICKNESS ] = 2.0f;
 	values[ PT_BORDER_OPACITY ] = 1.0f;
@@ -348,21 +346,25 @@ ShapeMasks::ShapeMasks()
 		char widthName[ 16 ], heightName[ 16 ];
 		snprintf( widthName, sizeof( widthName ), "Largura P%02u", i + 1 );
 		snprintf( heightName, sizeof( heightName ), "Altura P%02u", i + 1 );
-		unsigned int widthIndex = PT_PANEL_DATA_START + i * 2;
-		unsigned int heightIndex = widthIndex + 1;
-		SetParamInfo( widthIndex, widthName, FF_TYPE_STANDARD, 1.0f );
-		SetParamInfo( heightIndex, heightName, FF_TYPE_STANDARD, 1.0f );
-		SetParamRange( widthIndex, 0.1f, 2.0f );
-		SetParamRange( heightIndex, 0.1f, 2.0f );
-		SetParamGroup( widthIndex, "Tamanho individual" );
-		SetParamGroup( heightIndex, "Tamanho individual" );
-		SetParamVisibility( widthIndex, false, false );
-		SetParamVisibility( heightIndex, false, false );
+		char posXName[ 16 ], posYName[ 16 ];
+		snprintf( posXName, sizeof( posXName ), "Posicao X P%02u", i + 1 );
+		snprintf( posYName, sizeof( posYName ), "Posicao Y P%02u", i + 1 );
+		unsigned int baseIndex = PT_PANEL_DATA_START + i * 4;
+		SetParamInfo( baseIndex, widthName, FF_TYPE_STANDARD, 1.0f );
+		SetParamInfo( baseIndex + 1, heightName, FF_TYPE_STANDARD, 1.0f );
+		SetParamInfo( baseIndex + 2, posXName, FF_TYPE_STANDARD, 0.0f );
+		SetParamInfo( baseIndex + 3, posYName, FF_TYPE_STANDARD, 0.0f );
+		SetParamRange( baseIndex, 0.1f, 2.0f );
+		SetParamRange( baseIndex + 1, 0.1f, 2.0f );
+		SetParamRange( baseIndex + 2, -1.0f, 1.0f );
+		SetParamRange( baseIndex + 3, -1.0f, 1.0f );
+		SetParamGroup( baseIndex, "Tamanho individual" );
+		SetParamGroup( baseIndex + 1, "Tamanho individual" );
+		SetParamGroup( baseIndex + 2, "Posicao individual" );
+		SetParamGroup( baseIndex + 3, "Posicao individual" );
+		for( unsigned int j = 0; j < 4; ++j )
+			SetParamVisibility( baseIndex + j, false, false );
 	}
-	SetParamInfof( PT_POS_X, "Posicao X", FF_TYPE_STANDARD );
-	SetParamInfof( PT_POS_Y, "Posicao Y", FF_TYPE_STANDARD );
-	SetParamRange( PT_POS_X, -1.0f, 1.0f );
-	SetParamRange( PT_POS_Y, -1.0f, 1.0f );
 	SetParamInfo( PT_BORDER_ENABLED, "Ativar Borda", FF_TYPE_BOOLEAN, false );
 	SetParamInfof( PT_BORDER_THICKNESS, "Espessura da Borda", FF_TYPE_STANDARD );
 	SetParamRange( PT_BORDER_THICKNESS, 0.0f, 20.0f );
@@ -370,8 +372,6 @@ ShapeMasks::ShapeMasks()
 	SetParamInfof( PT_BORDER_RED, "Borda - Vermelho", FF_TYPE_RED );
 	SetParamInfof( PT_BORDER_GREEN, "Borda - Verde", FF_TYPE_GREEN );
 	SetParamInfof( PT_BORDER_BLUE, "Borda - Azul", FF_TYPE_BLUE );
-	SetParamGroup( PT_POS_X, "Posicao da Mascara" );
-	SetParamGroup( PT_POS_Y, "Posicao da Mascara" );
 	SetParamGroup( PT_BORDER_ENABLED, "Borda dos Paineis" );
 	SetParamGroup( PT_BORDER_THICKNESS, "Borda dos Paineis" );
 	SetParamGroup( PT_BORDER_OPACITY, "Borda dos Paineis" );
@@ -431,7 +431,6 @@ FFResult ShapeMasks::ProcessOpenGL( ProcessOpenGLStruct* pGL )
 	shader.Set( "Invert", values[ PT_INVERT ] > 0.5f ? 1.0f : 0.0f );
 	shader.Set( "Soft", values[ PT_SOFT ] );
 	shader.Set( "Content", (int)( values[ PT_CONTENT ] + 0.5f ) );
-	shader.Set( "Position", values[ PT_POS_X ], values[ PT_POS_Y ] );
 	shader.Set( "BorderEnabled", values[ PT_BORDER_ENABLED ] > 0.5f ? 1 : 0 );
 	shader.Set( "BorderThickness", values[ PT_BORDER_THICKNESS ] );
 	shader.Set( "BorderOpacity", values[ PT_BORDER_OPACITY ] );
@@ -443,8 +442,10 @@ FFResult ShapeMasks::ProcessOpenGL( ProcessOpenGLStruct* pGL )
 	{
 		char uniformName[ 32 ];
 		snprintf( uniformName, sizeof( uniformName ), "PanelScale[%u]", i );
-		unsigned int widthIndex = PT_PANEL_DATA_START + i * 2;
-		shader.Set( uniformName, values[ widthIndex ], values[ widthIndex + 1 ] );
+		unsigned int baseIndex = PT_PANEL_DATA_START + i * 4;
+		shader.Set( uniformName, values[ baseIndex ], values[ baseIndex + 1 ] );
+		snprintf( uniformName, sizeof( uniformName ), "PanelPosition[%u]", i );
+		shader.Set( uniformName, values[ baseIndex + 2 ], values[ baseIndex + 3 ] );
 	}
 
 	quad.Draw();
@@ -466,9 +467,9 @@ void ShapeMasks::UpdatePanelParameterVisibility( bool raiseEvents )
 	for( unsigned int i = 0; i < 96; ++i )
 	{
 		bool visible = ( i + 1 == selected );
-		unsigned int widthIndex = PT_PANEL_DATA_START + i * 2;
-		SetParamVisibility( widthIndex, visible, raiseEvents );
-		SetParamVisibility( widthIndex + 1, visible, raiseEvents );
+		unsigned int baseIndex = PT_PANEL_DATA_START + i * 4;
+		for( unsigned int j = 0; j < 4; ++j )
+			SetParamVisibility( baseIndex + j, visible, raiseEvents );
 	}
 }
 
@@ -484,9 +485,13 @@ FFResult ShapeMasks::SetFloatParameter( unsigned int index, float value )
 		return FF_SUCCESS;
 	}
 	if( index >= PT_PANEL_DATA_START && index < PT_PANEL_DATA_END )
-		value = fmaxf( 0.1f, fminf( 2.0f, value ) );
-	if( index == PT_POS_X || index == PT_POS_Y )
-		value = fmaxf( -1.0f, fminf( 1.0f, value ) );
+	{
+		unsigned int field = ( index - PT_PANEL_DATA_START ) % 4;
+		if( field < 2 )
+			value = fmaxf( 0.1f, fminf( 2.0f, value ) );
+		else
+			value = fmaxf( -1.0f, fminf( 1.0f, value ) );
+	}
 	if( index == PT_BORDER_THICKNESS )
 		value = fmaxf( 0.0f, fminf( 20.0f, value ) );
 	if( index == PT_BORDER_OPACITY || ( index >= PT_BORDER_RED && index <= PT_BORDER_BLUE ) )
