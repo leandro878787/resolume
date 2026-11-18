@@ -1,4 +1,4 @@
-name: Build ShapeMasks (Windows)
+name: Compilar Mascara MultiPainel (Windows)
 
 on:
   push:
@@ -48,6 +48,6 @@ jobs:
       - name: Enviar o .dll para download
         uses: actions/upload-artifact@v4
         with:
-          name: ShapeMasks-dll
+          name: Mascara-MultiPainel-dll
           path: ffgl-sdk/binaries/x64/Release/ShapeMasks.dll
           if-no-files-found: error
