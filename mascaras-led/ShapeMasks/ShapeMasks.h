@@ -19,6 +19,8 @@ private:
 	ffglex::FFGLShader shader;
 	ffglex::FFGLScreenQuad quad;
 
-	static const unsigned int NUM_PARAMS = 18;
+	static const unsigned int MAX_PANELS = 96;
+	static const unsigned int NUM_PARAMS = 18 + 1 + MAX_PANELS * 2;
 	float values[ NUM_PARAMS ];
+	void UpdatePanelParameterVisibility( bool raiseEvents );
 };
