@@ -6,6 +6,10 @@ using namespace ffglex;
 enum ParamType : FFUInt32
 {
 	PT_SHAPE,
+	PT_BG_RED,
+	PT_BG_GREEN,
+	PT_BG_BLUE,
+	PT_BG_ALPHA,
 	PT_COLUMNS,
 	PT_ROWS,
 	PT_GAP,
@@ -19,10 +23,6 @@ enum ParamType : FFUInt32
 	PT_INVERT,
 	PT_SOFT,
 	PT_CONTENT,
-	PT_BG_RED,
-	PT_BG_GREEN,
-	PT_BG_BLUE,
-	PT_BG_ALPHA,
 	PT_COUNT,
 	PT_PANEL_SELECT = PT_COUNT,
 	PT_PANEL_DATA_START,
@@ -342,10 +342,6 @@ ShapeMasks::ShapeMasks()
 	SetParamInfof( PT_BG_GREEN, "Fundo - Verde", FF_TYPE_GREEN );
 	SetParamInfof( PT_BG_BLUE, "Fundo - Azul", FF_TYPE_BLUE );
 	SetParamInfof( PT_BG_ALPHA, "Fundo - Opacidade", FF_TYPE_ALPHA );
-	SetParamGroup( PT_BG_RED, "Cores do Fundo" );
-	SetParamGroup( PT_BG_GREEN, "Cores do Fundo" );
-	SetParamGroup( PT_BG_BLUE, "Cores do Fundo" );
-	SetParamGroup( PT_BG_ALPHA, "Cores do Fundo" );
 
 	SetOptionParamInfo( PT_PANEL_SELECT, "Painel ativo", 96, values[ PT_PANEL_SELECT ] );
 	for( unsigned int i = 0; i < 96; ++i )
