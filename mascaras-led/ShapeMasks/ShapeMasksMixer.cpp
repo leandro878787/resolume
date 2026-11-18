@@ -1,12 +1,21 @@
 #include "ShapeMasksMixer.h"
+#include <vector>
 using namespace ffglex;
 using namespace ffglqs;
+
+enum MixerParam : unsigned int
+{
+    PARAM_POS_X_1 = 0,
+    PARAM_POS_Y_1,
+    PARAM_POS_X_2,
+    PARAM_POS_Y_2
+};
 
 static CFFGLPluginInfo PluginInfo(
     PluginFactory< ShapeMasksMixer >,
     "MkM2", "Mascara MultiPainel Mixer",
     2, 1, 0, 0, FF_MIXER,
-    "Mascara MultiPainel Mixer: teste de duas entradas independentes",
+    "Mascara MultiPainel Mixer: duas entradas com posicionamento independente",
     "@leandrone_x"
 );
 
@@ -22,13 +31,37 @@ uniform sampler2D InputA;
 uniform sampler2D InputB;
 uniform vec2 MaxUVA;
 uniform vec2 MaxUVB;
+uniform vec2 PositionA;
+uniform vec2 PositionB;
 in vec2 uv;
 out vec4 fragColor;
+
+bool insidePanel(vec2 p, vec2 center)
+{
+    vec2 local = (p - (center - vec2(0.25, 0.5))) / vec2(0.5, 1.0);
+    return all(greaterThanEqual(local, vec2(0.0))) &&
+           all(lessThanEqual(local, vec2(1.0)));
+}
+
 void main()
 {
-    fragColor = (uv.x < 0.5)
-        ? texture(InputA, uv * MaxUVA)
-        : texture(InputB, uv * MaxUVB);
+    vec2 centerA = vec2(0.25, 0.5) + PositionA;
+    vec2 centerB = vec2(0.75, 0.5) + PositionB;
+
+    if (insidePanel(uv, centerB))
+    {
+        vec2 localB = (uv - (centerB - vec2(0.25, 0.5))) / vec2(0.5, 1.0);
+        fragColor = texture(InputB, localB * MaxUVB);
+    }
+    else if (insidePanel(uv, centerA))
+    {
+        vec2 localA = (uv - (centerA - vec2(0.25, 0.5))) / vec2(0.5, 1.0);
+        fragColor = texture(InputA, localA * MaxUVA);
+    }
+    else
+    {
+        fragColor = vec4(0.0);
+    }
 }
 )";
 
@@ -36,7 +69,13 @@ ShapeMasksMixer::ShapeMasksMixer()
 {
     SetMinInputs(2);
     SetMaxInputs(2);
-    FFGLLog::LogToHost("Mascara MultiPainel Mixer: duas entradas prontas");
+
+    AddParam(ParamRange::Create("Pos X Painel 1", 0.0f, ParamRange::Range(-0.5f, 0.5f)));
+    AddParam(ParamRange::Create("Pos Y Painel 1", 0.0f, ParamRange::Range(-0.5f, 0.5f)));
+    AddParam(ParamRange::Create("Pos X Painel 2", 0.0f, ParamRange::Range(-0.5f, 0.5f)));
+    AddParam(ParamRange::Create("Pos Y Painel 2", 0.0f, ParamRange::Range(-0.5f, 0.5f)));
+
+    FFGLLog::LogToHost("Mascara MultiPainel Mixer: posicao X/Y independente dos dois paineis");
 }
 ShapeMasksMixer::~ShapeMasksMixer() {}
 
@@ -64,6 +103,9 @@ FFResult ShapeMasksMixer::ProcessOpenGL(ProcessOpenGLStruct* pGL)
     shader.Set("MaxUVA", maxCoords.s, maxCoords.t);
     maxCoords = GetMaxGLTexCoords(*pGL->inputTextures[1]);
     shader.Set("MaxUVB", maxCoords.s, maxCoords.t);
+
+    shader.Set("PositionA", GetFloatParameter(PARAM_POS_X_1), GetFloatParameter(PARAM_POS_Y_1));
+    shader.Set("PositionB", GetFloatParameter(PARAM_POS_X_2), GetFloatParameter(PARAM_POS_Y_2));
 
     quad.Draw();
     return FF_SUCCESS;
