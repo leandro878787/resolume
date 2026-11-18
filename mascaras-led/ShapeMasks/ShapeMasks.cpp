@@ -26,7 +26,16 @@ enum ParamType : FFUInt32
 	PT_COUNT,
 	PT_PANEL_SELECT = PT_COUNT,
 	PT_PANEL_DATA_START,
-	PT_TOTAL_PARAMS = PT_PANEL_DATA_START + 96 * 2
+	PT_PANEL_DATA_END = PT_PANEL_DATA_START + 96 * 2,
+	PT_POS_X = PT_PANEL_DATA_END,
+	PT_POS_Y,
+	PT_BORDER_ENABLED,
+	PT_BORDER_THICKNESS,
+	PT_BORDER_OPACITY,
+	PT_BORDER_RED,
+	PT_BORDER_GREEN,
+	PT_BORDER_BLUE,
+	PT_TOTAL_PARAMS
 };
 
 static CFFGLPluginInfo PluginInfo(
@@ -76,6 +85,11 @@ uniform float Soft;
 uniform int   Content;
 uniform vec4  BgColor; // premultiplied
 uniform vec2  PanelScale[96];
+uniform vec2  Position;
+uniform int   BorderEnabled;
+uniform float BorderThickness;
+uniform float BorderOpacity;
+uniform vec3  BorderColor;
 
 in vec2 uv;
 out vec4 fragColor;
@@ -186,9 +200,10 @@ void main()
 	float cols = max( 1.0, floor( Cols + 0.5 ) );
 	float rows = max( 1.0, floor( Rows + 0.5 ) );
 
-	float yg  = uv.y * rows;
+	vec2 maskUV = uv - Position;
+	float yg  = maskUV.y * rows;
 	float row = floor( yg );
-	float xg  = uv.x * cols;
+	float xg  = maskUV.x * cols;
 	if( OffsetRows > 0.5 && mod( row, 2.0 ) > 0.5 )
 		xg += 0.5;
 	float col = floor( xg );
@@ -221,6 +236,15 @@ void main()
 
 	// InputTexture e premultiplicada; a saida tambem precisa ser.
 	vec4 img = texture( InputTexture, suv * MaxUV );
+
+	if( BorderEnabled == 1 && BorderThickness > 0.0 )
+	{
+		float borderInner = smoothstep( 0.0, edge, d );
+		float borderOuter = 1.0 - smoothstep( BorderThickness, BorderThickness + edge, d );
+		float borderMask = borderInner * borderOuter;
+		vec4 borderColor = vec4( BorderColor * img.a, img.a );
+		img = mix( img, borderColor, borderMask * BorderOpacity );
+	}
 	fragColor = mix( BgColor, img, a );
 }
 )";
@@ -251,7 +275,15 @@ ShapeMasks::ShapeMasks()
 	values[ PT_BG_BLUE ]     = 0.0f;
 	values[ PT_BG_ALPHA ]    = 1.0f;
 	values[ PT_PANEL_SELECT ] = 1.0f;
-	for( unsigned int i = PT_PANEL_DATA_START; i < PT_TOTAL_PARAMS; ++i )
+	values[ PT_POS_X ] = 0.0f;
+	values[ PT_POS_Y ] = 0.0f;
+	values[ PT_BORDER_ENABLED ] = 0.0f;
+	values[ PT_BORDER_THICKNESS ] = 2.0f;
+	values[ PT_BORDER_OPACITY ] = 1.0f;
+	values[ PT_BORDER_RED ] = 1.0f;
+	values[ PT_BORDER_GREEN ] = 1.0f;
+	values[ PT_BORDER_BLUE ] = 1.0f;
+	for( unsigned int i = PT_PANEL_DATA_START; i < PT_PANEL_DATA_END; ++i )
 		values[ i ] = 1.0f;
 
 	SetMinInputs( 1 );
@@ -324,6 +356,26 @@ ShapeMasks::ShapeMasks()
 		SetParamVisibility( widthIndex, false, false );
 		SetParamVisibility( heightIndex, false, false );
 	}
+	SetParamInfof( PT_POS_X, "Posicao X", FF_TYPE_STANDARD );
+	SetParamInfof( PT_POS_Y, "Posicao Y", FF_TYPE_STANDARD );
+	SetParamRange( PT_POS_X, -1.0f, 1.0f );
+	SetParamRange( PT_POS_Y, -1.0f, 1.0f );
+	SetParamInfo( PT_BORDER_ENABLED, "Ativar Borda", FF_TYPE_BOOLEAN, false );
+	SetParamInfof( PT_BORDER_THICKNESS, "Espessura da Borda", FF_TYPE_STANDARD );
+	SetParamRange( PT_BORDER_THICKNESS, 0.0f, 20.0f );
+	SetParamInfof( PT_BORDER_OPACITY, "Opacidade da Borda", FF_TYPE_ALPHA );
+	SetParamInfof( PT_BORDER_RED, "Borda - Vermelho", FF_TYPE_RED );
+	SetParamInfof( PT_BORDER_GREEN, "Borda - Verde", FF_TYPE_GREEN );
+	SetParamInfof( PT_BORDER_BLUE, "Borda - Azul", FF_TYPE_BLUE );
+	SetParamGroup( PT_POS_X, "Posicao da Mascara" );
+	SetParamGroup( PT_POS_Y, "Posicao da Mascara" );
+	SetParamGroup( PT_BORDER_ENABLED, "Borda dos Paineis" );
+	SetParamGroup( PT_BORDER_THICKNESS, "Borda dos Paineis" );
+	SetParamGroup( PT_BORDER_OPACITY, "Borda dos Paineis" );
+	SetParamGroup( PT_BORDER_RED, "Borda dos Paineis" );
+	SetParamGroup( PT_BORDER_GREEN, "Borda dos Paineis" );
+	SetParamGroup( PT_BORDER_BLUE, "Borda dos Paineis" );
+
 	UpdatePanelParameterVisibility( false );
 	FFGLLog::LogToHost( "Efeito Mascara MultiPainel criado" );
 }
@@ -376,6 +428,11 @@ FFResult ShapeMasks::ProcessOpenGL( ProcessOpenGLStruct* pGL )
 	shader.Set( "Invert", values[ PT_INVERT ] > 0.5f ? 1.0f : 0.0f );
 	shader.Set( "Soft", values[ PT_SOFT ] );
 	shader.Set( "Content", (int)( values[ PT_CONTENT ] + 0.5f ) );
+	shader.Set( "Position", values[ PT_POS_X ], values[ PT_POS_Y ] );
+	shader.Set( "BorderEnabled", values[ PT_BORDER_ENABLED ] > 0.5f ? 1 : 0 );
+	shader.Set( "BorderThickness", values[ PT_BORDER_THICKNESS ] );
+	shader.Set( "BorderOpacity", values[ PT_BORDER_OPACITY ] );
+	shader.Set( "BorderColor", values[ PT_BORDER_RED ], values[ PT_BORDER_GREEN ], values[ PT_BORDER_BLUE ] );
 
 	const float a = values[ PT_BG_ALPHA ];
 	shader.Set( "BgColor", values[ PT_BG_RED ] * a, values[ PT_BG_GREEN ] * a, values[ PT_BG_BLUE ] * a, a );
@@ -423,8 +480,14 @@ FFResult ShapeMasks::SetFloatParameter( unsigned int index, float value )
 		UpdatePanelParameterVisibility( true );
 		return FF_SUCCESS;
 	}
-	if( index >= PT_PANEL_DATA_START )
+	if( index >= PT_PANEL_DATA_START && index < PT_PANEL_DATA_END )
 		value = fmaxf( 0.1f, fminf( 2.0f, value ) );
+	if( index == PT_POS_X || index == PT_POS_Y )
+		value = fmaxf( -1.0f, fminf( 1.0f, value ) );
+	if( index == PT_BORDER_THICKNESS )
+		value = fmaxf( 0.0f, fminf( 20.0f, value ) );
+	if( index == PT_BORDER_OPACITY || ( index >= PT_BORDER_RED && index <= PT_BORDER_BLUE ) )
+		value = fmaxf( 0.0f, fminf( 1.0f, value ) );
 	values[ index ] = value;
 	return FF_SUCCESS;
 }
