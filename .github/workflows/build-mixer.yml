@@ -1,0 +1,49 @@
+name: Compilar Mascara MultiPainel Mixer (Windows)
+
+on:
+  push:
+    paths:
+      - 'mascaras-led/ShapeMasks/ShapeMasksMixer.*'
+      - '.github/workflows/build-mixer.yml'
+  workflow_dispatch:
+
+jobs:
+  build-mixer:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Localizar codigo do Mixer
+        shell: pwsh
+        run: |
+          $f = Get-ChildItem -Recurse -Filter ShapeMasksMixer.cpp | Select-Object -First 1
+          if (-not $f) { throw "ShapeMasksMixer.cpp nao foi encontrado." }
+          "PLUGIN_DIR=$($f.DirectoryName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Baixar SDK FFGL oficial
+        shell: pwsh
+        run: |
+          git clone https://github.com/resolume/ffgl.git ffgl-sdk
+          git -C ffgl-sdk checkout 5b6e07840277df9ec35a228b9eb067636316350f
+      - name: Copiar plugin e gerar projeto
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ffgl-sdk/source/plugins/ShapeMasksMixer | Out-Null
+          Copy-Item "$env:PLUGIN_DIR/ShapeMasksMixer.cpp" ffgl-sdk/source/plugins/ShapeMasksMixer/
+          Copy-Item "$env:PLUGIN_DIR/ShapeMasksMixer.h" ffgl-sdk/source/plugins/ShapeMasksMixer/
+          $proj = Get-Content ffgl-sdk/build/windows/AddSubtract.vcxproj -Raw
+          $proj = $proj -replace 'AddSubtract', 'ShapeMasksMixer'
+          $proj = $proj -replace 'AVFFGLADDSUBTRACT_EXPORTS', 'AVFFGLSHAPEMASKSMIXER_EXPORTS'
+          $proj = $proj -replace '8EE99351-6226-415E-B2E9-2DCB2985F371', '6B2A1F94-8C73-4D50-AE31-2F7C9B5D1048'
+          Set-Content ffgl-sdk/build/windows/ShapeMasksMixer.vcxproj $proj -Encoding UTF8
+      - name: Preparar MSBuild
+        uses: microsoft/setup-msbuild@v2
+      - name: Compilar Mixer (Release x64)
+        shell: pwsh
+        run: |
+          msbuild ffgl-sdk/build/windows/ShapeMasksMixer.vcxproj /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /p:WindowsTargetPlatformVersion=10.0 /m
+      - name: Publicar DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mascara-MultiPainel-Mixer-teste-2-entradas
+          path: ffgl-sdk/binaries/x64/Release/ShapeMasksMixer.dll
+          if-no-files-found: error
