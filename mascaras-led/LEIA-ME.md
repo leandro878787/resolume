@@ -1,10 +1,15 @@
-# Shape Masks (plugin FFGL para Resolume)
-Mascaras em varias formas, sem mexer no video. Nome no Resolume: "Mascaras LED".
+# Mascara MultiPainel (plugin FFGL para Resolume)
 
-Parametros: Shape (Rectangle, Rounded Rectangle, Arch, Circle, Oval, Triangle Up, Triangle Down,
-Diamond, Hexagon, Star, Cross), Columns (1-12), Rows (1-8), Gap, Corner Roundness, Arch Height,
-Star Points, Star Fatness, Rotation, Offset Rows, Flip Alternate, Invert, Edge Softness,
-Content (Original video / Fit inside each shape), Background (cor e alfa).
+Efeito de mascaras geometricas para dividir a imagem em paineis. Interface em portugues do Brasil.
 
-Para mudar o nome que aparece no Resolume: em ShapeMasks.cpp, troque "Mascaras LED" (2o texto do PluginInfo).
-NAO troque o ID "MkSh".
+## Controles
+- Forma: Retangulo, Retangulo Arredondado, Arco, Circulo, Oval, Triangulo para Cima, Triangulo para Baixo, Losango, Hexagono, Estrela e Cruz.
+- Colunas (1 a 12) e Linhas (1 a 8).
+- Espacamento, Arredondamento dos Cantos e Altura do Arco.
+- Pontas da Estrela e Espessura da Estrela.
+- Rotacao, Deslocar Linhas, Espelhar Alternadamente e Inverter Mascara.
+- Suavidade das Bordas.
+- Conteudo: Video Original ou Ajustar dentro de cada forma.
+- Fundo: Vermelho, Verde, Azul e Opacidade.
+
+O identificador interno FFGL `MkSh` foi preservado para evitar alterar a identidade tecnica do plugin.
