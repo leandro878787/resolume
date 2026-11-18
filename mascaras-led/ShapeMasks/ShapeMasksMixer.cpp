@@ -8,14 +8,23 @@ enum MixerParam : unsigned int
     PARAM_POS_X_1 = 0,
     PARAM_POS_Y_1,
     PARAM_POS_X_2,
-    PARAM_POS_Y_2
+    PARAM_POS_Y_2,
+    PARAM_BORDER_ENABLED,
+    PARAM_BORDER_THICKNESS,
+    PARAM_BORDER_OPACITY,
+    PARAM_BORDER_1_R,
+    PARAM_BORDER_1_G,
+    PARAM_BORDER_1_B,
+    PARAM_BORDER_2_R,
+    PARAM_BORDER_2_G,
+    PARAM_BORDER_2_B
 };
 
 static CFFGLPluginInfo PluginInfo(
     PluginFactory< ShapeMasksMixer >,
     "MkM2", "Mascara MultiPainel Mixer",
     2, 1, 0, 0, FF_MIXER,
-    "Mascara MultiPainel Mixer: duas entradas com posicionamento independente",
+    "Mascara MultiPainel Mixer: duas entradas, posicao independente e bordas opcionais",
     "@leandrone_x"
 );
 
@@ -33,6 +42,11 @@ uniform vec2 MaxUVA;
 uniform vec2 MaxUVB;
 uniform vec2 PositionA;
 uniform vec2 PositionB;
+uniform int BorderEnabled;
+uniform float BorderThickness;
+uniform float BorderOpacity;
+uniform vec3 BorderColorA;
+uniform vec3 BorderColorB;
 in vec2 uv;
 out vec4 fragColor;
 
@@ -43,6 +57,13 @@ bool insidePanel(vec2 p, vec2 center)
            all(lessThanEqual(local, vec2(1.0)));
 }
 
+bool onBorder(vec2 local)
+{
+    float edge = min(min(local.x, 1.0 - local.x),
+                     min(local.y, 1.0 - local.y));
+    return edge <= BorderThickness;
+}
+
 void main()
 {
     vec2 centerA = vec2(0.25, 0.5) + PositionA;
@@ -51,12 +72,18 @@ void main()
     if (insidePanel(uv, centerB))
     {
         vec2 localB = (uv - (centerB - vec2(0.25, 0.5))) / vec2(0.5, 1.0);
-        fragColor = texture(InputB, localB * MaxUVB);
+        vec4 color = texture(InputB, localB * MaxUVB);
+        if (BorderEnabled == 1 && onBorder(localB))
+            color.rgb = mix(color.rgb, BorderColorB, BorderOpacity);
+        fragColor = color;
     }
     else if (insidePanel(uv, centerA))
     {
         vec2 localA = (uv - (centerA - vec2(0.25, 0.5))) / vec2(0.5, 1.0);
-        fragColor = texture(InputA, localA * MaxUVA);
+        vec4 color = texture(InputA, localA * MaxUVA);
+        if (BorderEnabled == 1 && onBorder(localA))
+            color.rgb = mix(color.rgb, BorderColorA, BorderOpacity);
+        fragColor = color;
     }
     else
     {
@@ -75,7 +102,19 @@ ShapeMasksMixer::ShapeMasksMixer()
     AddParam(ParamRange::Create("Pos X Painel 2", 0.0f, ParamRange::Range(-0.5f, 0.5f)));
     AddParam(ParamRange::Create("Pos Y Painel 2", 0.0f, ParamRange::Range(-0.5f, 0.5f)));
 
-    FFGLLog::LogToHost("Mascara MultiPainel Mixer: posicao X/Y independente dos dois paineis");
+    AddParam(ParamRange::Create("Borda Ligada", 0.0f, ParamRange::Range(0.0f, 1.0f)));
+    AddParam(ParamRange::Create("Espessura da Borda", 0.006f, ParamRange::Range(0.001f, 0.05f)));
+    AddParam(ParamRange::Create("Transparencia da Borda", 1.0f, ParamRange::Range(0.0f, 1.0f)));
+
+    AddParam(ParamRange::Create("Borda Painel 1 - Vermelho", 1.0f, ParamRange::Range(0.0f, 1.0f)));
+    AddParam(ParamRange::Create("Borda Painel 1 - Verde", 1.0f, ParamRange::Range(0.0f, 1.0f)));
+    AddParam(ParamRange::Create("Borda Painel 1 - Azul", 1.0f, ParamRange::Range(0.0f, 1.0f)));
+
+    AddParam(ParamRange::Create("Borda Painel 2 - Vermelho", 1.0f, ParamRange::Range(0.0f, 1.0f)));
+    AddParam(ParamRange::Create("Borda Painel 2 - Verde", 1.0f, ParamRange::Range(0.0f, 1.0f)));
+    AddParam(ParamRange::Create("Borda Painel 2 - Azul", 1.0f, ParamRange::Range(0.0f, 1.0f)));
+
+    FFGLLog::LogToHost("Mascara MultiPainel Mixer: posicao X/Y e bordas opcionais");
 }
 ShapeMasksMixer::~ShapeMasksMixer() {}
 
@@ -106,6 +145,18 @@ FFResult ShapeMasksMixer::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
     shader.Set("PositionA", GetFloatParameter(PARAM_POS_X_1), GetFloatParameter(PARAM_POS_Y_1));
     shader.Set("PositionB", GetFloatParameter(PARAM_POS_X_2), GetFloatParameter(PARAM_POS_Y_2));
+
+    shader.Set("BorderEnabled", GetFloatParameter(PARAM_BORDER_ENABLED) >= 0.5f ? 1 : 0);
+    shader.Set("BorderThickness", GetFloatParameter(PARAM_BORDER_THICKNESS));
+    shader.Set("BorderOpacity", GetFloatParameter(PARAM_BORDER_OPACITY));
+    shader.Set("BorderColorA",
+        GetFloatParameter(PARAM_BORDER_1_R),
+        GetFloatParameter(PARAM_BORDER_1_G),
+        GetFloatParameter(PARAM_BORDER_1_B));
+    shader.Set("BorderColorB",
+        GetFloatParameter(PARAM_BORDER_2_R),
+        GetFloatParameter(PARAM_BORDER_2_G),
+        GetFloatParameter(PARAM_BORDER_2_B));
 
     quad.Draw();
     return FF_SUCCESS;
