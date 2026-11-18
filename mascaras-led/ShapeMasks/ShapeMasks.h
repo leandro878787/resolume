@@ -20,7 +20,7 @@ private:
 	ffglex::FFGLScreenQuad quad;
 
 	static const unsigned int MAX_PANELS = 96;
-	static const unsigned int NUM_PARAMS = 18 + 1 + MAX_PANELS * 2 + 8;
+	static const unsigned int NUM_PARAMS = 18 + 1 + MAX_PANELS * 4 + 6;
 	float values[ NUM_PARAMS ];
 	void UpdatePanelParameterVisibility( bool raiseEvents );
 };
