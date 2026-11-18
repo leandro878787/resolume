@@ -10,6 +10,12 @@ enum ParamType : FFUInt32
 	PT_BG_GREEN,
 	PT_BG_BLUE,
 	PT_BG_ALPHA,
+	PT_BORDER_ENABLED,
+	PT_BORDER_THICKNESS,
+	PT_BORDER_OPACITY,
+	PT_BORDER_RED,
+	PT_BORDER_GREEN,
+	PT_BORDER_BLUE,
 	PT_COLUMNS,
 	PT_ROWS,
 	PT_GAP,
@@ -27,12 +33,6 @@ enum ParamType : FFUInt32
 	PT_PANEL_SELECT = PT_COUNT,
 	PT_PANEL_DATA_START,
 	PT_PANEL_DATA_END = PT_PANEL_DATA_START + 96 * 4,
-	PT_BORDER_ENABLED,
-	PT_BORDER_THICKNESS,
-	PT_BORDER_OPACITY,
-	PT_BORDER_RED,
-	PT_BORDER_GREEN,
-	PT_BORDER_BLUE,
 	PT_TOTAL_PARAMS
 };
 
@@ -338,10 +338,44 @@ ShapeMasks::ShapeMasks()
 	SetParamElementInfo( PT_CONTENT, 0, "Video Original", 0.0f );
 	SetParamElementInfo( PT_CONTENT, 1, "Ajustar dentro de cada forma", 1.0f );
 
+	// Grupos recolhiveis para manter a interface compacta no Resolume.
+	SetParamGroup( PT_COLUMNS, "Distribuicao dos Paineis" );
+	SetParamGroup( PT_ROWS, "Distribuicao dos Paineis" );
+	SetParamGroup( PT_GAP, "Distribuicao dos Paineis" );
+	SetParamGroup( PT_OFFSET_ROWS, "Distribuicao dos Paineis" );
+	SetParamGroup( PT_FLIP_ALT, "Distribuicao dos Paineis" );
+
+	SetParamGroup( PT_ROUNDNESS, "Ajustes da Forma" );
+	SetParamGroup( PT_ARCH_HEIGHT, "Ajustes da Forma" );
+	SetParamGroup( PT_POINTS, "Ajustes da Forma" );
+	SetParamGroup( PT_FATNESS, "Ajustes da Forma" );
+	SetParamGroup( PT_ROTATION, "Ajustes da Forma" );
+
+	SetParamGroup( PT_INVERT, "Acabamento e Conteudo" );
+	SetParamGroup( PT_SOFT, "Acabamento e Conteudo" );
+	SetParamGroup( PT_CONTENT, "Acabamento e Conteudo" );
+
 	SetParamInfof( PT_BG_RED, "Fundo - Vermelho", FF_TYPE_RED );
 	SetParamInfof( PT_BG_GREEN, "Fundo - Verde", FF_TYPE_GREEN );
 	SetParamInfof( PT_BG_BLUE, "Fundo - Azul", FF_TYPE_BLUE );
 	SetParamInfof( PT_BG_ALPHA, "Fundo - Opacidade", FF_TYPE_ALPHA );
+	SetParamGroup( PT_BG_RED, "Cores do Fundo" );
+	SetParamGroup( PT_BG_GREEN, "Cores do Fundo" );
+	SetParamGroup( PT_BG_BLUE, "Cores do Fundo" );
+	SetParamGroup( PT_BG_ALPHA, "Cores do Fundo" );
+	SetParamInfo( PT_BORDER_ENABLED, "Ativar Borda", FF_TYPE_BOOLEAN, false );
+	SetParamInfof( PT_BORDER_THICKNESS, "Espessura da Borda", FF_TYPE_STANDARD );
+	SetParamRange( PT_BORDER_THICKNESS, 0.0f, 20.0f );
+	SetParamInfof( PT_BORDER_OPACITY, "Opacidade da Borda", FF_TYPE_ALPHA );
+	SetParamInfof( PT_BORDER_RED, "Borda - Vermelho", FF_TYPE_RED );
+	SetParamInfof( PT_BORDER_GREEN, "Borda - Verde", FF_TYPE_GREEN );
+	SetParamInfof( PT_BORDER_BLUE, "Borda - Azul", FF_TYPE_BLUE );
+	SetParamGroup( PT_BORDER_ENABLED, "Borda dos Paineis" );
+	SetParamGroup( PT_BORDER_THICKNESS, "Borda dos Paineis" );
+	SetParamGroup( PT_BORDER_OPACITY, "Borda dos Paineis" );
+	SetParamGroup( PT_BORDER_RED, "Borda dos Paineis" );
+	SetParamGroup( PT_BORDER_GREEN, "Borda dos Paineis" );
+	SetParamGroup( PT_BORDER_BLUE, "Borda dos Paineis" );
 
 	SetOptionParamInfo( PT_PANEL_SELECT, "Painel ativo", 96, values[ PT_PANEL_SELECT ] );
 	for( unsigned int i = 0; i < 96; ++i )
@@ -371,19 +405,6 @@ ShapeMasks::ShapeMasks()
 		for( unsigned int j = 0; j < 4; ++j )
 			SetParamVisibility( baseIndex + j, false, false );
 	}
-	SetParamInfo( PT_BORDER_ENABLED, "Ativar Borda", FF_TYPE_BOOLEAN, false );
-	SetParamInfof( PT_BORDER_THICKNESS, "Espessura da Borda", FF_TYPE_STANDARD );
-	SetParamRange( PT_BORDER_THICKNESS, 0.0f, 20.0f );
-	SetParamInfof( PT_BORDER_OPACITY, "Opacidade da Borda", FF_TYPE_ALPHA );
-	SetParamInfof( PT_BORDER_RED, "Borda - Vermelho", FF_TYPE_RED );
-	SetParamInfof( PT_BORDER_GREEN, "Borda - Verde", FF_TYPE_GREEN );
-	SetParamInfof( PT_BORDER_BLUE, "Borda - Azul", FF_TYPE_BLUE );
-	SetParamGroup( PT_BORDER_ENABLED, "Borda dos Paineis" );
-	SetParamGroup( PT_BORDER_THICKNESS, "Borda dos Paineis" );
-	SetParamGroup( PT_BORDER_OPACITY, "Borda dos Paineis" );
-	SetParamGroup( PT_BORDER_RED, "Borda dos Paineis" );
-	SetParamGroup( PT_BORDER_GREEN, "Borda dos Paineis" );
-	SetParamGroup( PT_BORDER_BLUE, "Borda dos Paineis" );
 
 	UpdatePanelParameterVisibility( false );
 	FFGLLog::LogToHost( "Efeito Mascara MultiPainel criado" );
