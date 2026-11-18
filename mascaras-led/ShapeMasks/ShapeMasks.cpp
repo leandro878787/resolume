@@ -23,7 +23,10 @@ enum ParamType : FFUInt32
 	PT_BG_GREEN,
 	PT_BG_BLUE,
 	PT_BG_ALPHA,
-	PT_COUNT
+	PT_COUNT,
+	PT_PANEL_SELECT = PT_COUNT,
+	PT_PANEL_DATA_START,
+	PT_TOTAL_PARAMS = PT_PANEL_DATA_START + 96 * 2
 };
 
 static CFFGLPluginInfo PluginInfo(
@@ -72,6 +75,7 @@ uniform float Invert;
 uniform float Soft;
 uniform int   Content;
 uniform vec4  BgColor; // premultiplied
+uniform vec2  PanelScale[96];
 
 in vec2 uv;
 out vec4 fragColor;
@@ -191,7 +195,11 @@ void main()
 
 	vec2 cell  = vec2( Res.x / cols, Res.y / rows );
 	vec2 local = vec2( fract( xg ) - 0.5, fract( yg ) - 0.5 ) * cell; // pixels, centro da celula = 0
-	vec2 sz    = cell * ( 1.0 - Gap );
+	int panelRow = int( clamp( row, 0.0, rows - 1.0 ) );
+	int panelCol = int( clamp( col, 0.0, cols - 1.0 ) );
+	int panelIndex = clamp( panelRow * int( cols ) + panelCol, 0, 95 );
+	vec2 panelScale = PanelScale[ panelIndex ];
+	vec2 sz    = cell * ( 1.0 - Gap ) * panelScale;
 	vec2 h     = sz * 0.5;
 
 	vec2 q = local;
@@ -242,6 +250,9 @@ ShapeMasks::ShapeMasks()
 	values[ PT_BG_GREEN ]    = 0.0f;
 	values[ PT_BG_BLUE ]     = 0.0f;
 	values[ PT_BG_ALPHA ]    = 1.0f;
+	values[ PT_PANEL_SELECT ] = 1.0f;
+	for( unsigned int i = PT_PANEL_DATA_START; i < PT_TOTAL_PARAMS; ++i )
+		values[ i ] = 1.0f;
 
 	SetMinInputs( 1 );
 	SetMaxInputs( 1 );
@@ -293,6 +304,27 @@ ShapeMasks::ShapeMasks()
 	SetParamInfof( PT_BG_BLUE, "Fundo - Azul", FF_TYPE_BLUE );
 	SetParamInfof( PT_BG_ALPHA, "Fundo - Opacidade", FF_TYPE_ALPHA );
 
+	SetOptionParamInfo( PT_PANEL_SELECT, "Painel ativo", 96, values[ PT_PANEL_SELECT ] );
+	for( unsigned int i = 0; i < 96; ++i )
+	{
+		char panelName[ 16 ];
+		snprintf( panelName, sizeof( panelName ), "Painel %02u", i + 1 );
+		SetParamElementInfo( PT_PANEL_SELECT, i, panelName, (float)( i + 1 ) );
+		char widthName[ 16 ], heightName[ 16 ];
+		snprintf( widthName, sizeof( widthName ), "Largura P%02u", i + 1 );
+		snprintf( heightName, sizeof( heightName ), "Altura P%02u", i + 1 );
+		unsigned int widthIndex = PT_PANEL_DATA_START + i * 2;
+		unsigned int heightIndex = widthIndex + 1;
+		SetParamInfo( widthIndex, widthName, FF_TYPE_STANDARD, 1.0f );
+		SetParamInfo( heightIndex, heightName, FF_TYPE_STANDARD, 1.0f );
+		SetParamRange( widthIndex, 0.1f, 2.0f );
+		SetParamRange( heightIndex, 0.1f, 2.0f );
+		SetParamGroup( widthIndex, "Tamanho individual" );
+		SetParamGroup( heightIndex, "Tamanho individual" );
+		SetParamVisibility( widthIndex, false, false );
+		SetParamVisibility( heightIndex, false, false );
+	}
+	UpdatePanelParameterVisibility( false );
 	FFGLLog::LogToHost( "Efeito Mascara MultiPainel criado" );
 }
 
@@ -347,6 +379,13 @@ FFResult ShapeMasks::ProcessOpenGL( ProcessOpenGLStruct* pGL )
 
 	const float a = values[ PT_BG_ALPHA ];
 	shader.Set( "BgColor", values[ PT_BG_RED ] * a, values[ PT_BG_GREEN ] * a, values[ PT_BG_BLUE ] * a, a );
+	for( unsigned int i = 0; i < 96; ++i )
+	{
+		char uniformName[ 32 ];
+		snprintf( uniformName, sizeof( uniformName ), "PanelScale[%u]", i );
+		unsigned int widthIndex = PT_PANEL_DATA_START + i * 2;
+		shader.Set( uniformName, values[ widthIndex ], values[ widthIndex + 1 ] );
+	}
 
 	quad.Draw();
 	return FF_SUCCESS;
@@ -359,17 +398,40 @@ FFResult ShapeMasks::DeInitGL()
 	return FF_SUCCESS;
 }
 
+void ShapeMasks::UpdatePanelParameterVisibility( bool raiseEvents )
+{
+	unsigned int selected = (unsigned int)( values[ PT_PANEL_SELECT ] + 0.5f );
+	if( selected < 1 ) selected = 1;
+	if( selected > 96 ) selected = 96;
+	for( unsigned int i = 0; i < 96; ++i )
+	{
+		bool visible = ( i + 1 == selected );
+		unsigned int widthIndex = PT_PANEL_DATA_START + i * 2;
+		SetParamVisibility( widthIndex, visible, raiseEvents );
+		SetParamVisibility( widthIndex + 1, visible, raiseEvents );
+	}
+}
+
 FFResult ShapeMasks::SetFloatParameter( unsigned int index, float value )
 {
-	if( index >= PT_COUNT )
+	if( index >= PT_TOTAL_PARAMS )
 		return FF_FAIL;
+	if( index == PT_PANEL_SELECT )
+	{
+		value = fmaxf( 1.0f, fminf( 96.0f, value ) );
+		values[ index ] = value;
+		UpdatePanelParameterVisibility( true );
+		return FF_SUCCESS;
+	}
+	if( index >= PT_PANEL_DATA_START )
+		value = fmaxf( 0.1f, fminf( 2.0f, value ) );
 	values[ index ] = value;
 	return FF_SUCCESS;
 }
 
 float ShapeMasks::GetFloatParameter( unsigned int index )
 {
-	if( index >= PT_COUNT )
+	if( index >= PT_TOTAL_PARAMS )
 		return 0.0f;
 	return values[ index ];
 }
